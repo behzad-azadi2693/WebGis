@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+{% block body %}
+  <div id="map" ></div>
+ 
+{% endblock %}
+
+{% block js %}
+    <script src="{% static 'map.js' %}"></script>
+    <script>
+        {% for user in users %}
+            var user = L.marker([{{ user.home.y }}, {{ user.home.x }}]).addTo(map);
+            user.bindPopup("<a href='{% url 'gis_app:user' user.user.id %}'>{{ user.user.username }}</a>").openPopup();
+        {% endfor %}
+    </script>
+{% endblock %}

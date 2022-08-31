@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+  <div id="map" class="col-9"></div>
+{% endblock %}
+
+{% block js %}
+  <script src="{% static 'map.js' %}"></script>
+  
+  <script>
+    {% for data in marker_list %}
+      var marker = L.marker({{ data.location }}).addTo(map);
+      marker.bindPopup("{{ data.name }}-{{ data.date }}").openPopup();
+    {% endfor %}
+  </script>
+{% endblock %}

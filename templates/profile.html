@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+{% block body %}
+<div class="row">
+  <div id="map" class="col-9 border border-primary m-2" style="height: 700px"></div>
+  <div id="map" class="col-2 text-justify border border-success m-2">
+  <p>User Description {{ information.username }}</p>
+    {{information.description}}
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+  <script src="{% static 'map.js' %}"></script>
+  <script>
+    var home = L.marker({{ information.home }}).addTo(map);
+    var worker = L.marker({{ information.worker }}).addTo(map);
+    home.bindPopup("Home").openPopup();
+    worker.bindPopup("Work").openPopup();
+
+    var myLines = [{
+        "type": "LineString",
+        "coordinates": {{information.line}}
+    }, ];
+
+    var myStyle = {
+        "color": "#ff7800",
+        "weight": 5,
+        "opacity": 0.65,
+    };
+    
+    L.geoJSON(myLines, {
+        style: myStyle,
+        onEachFeature: function (feature,layer) { 
+          layer.bindPopup('');
+          layer.on('popupopen', function(e) {
+            var popup = e.popup;
+            popup.setContent("length of two local:<br/> {{information.length}} km");
+          });
+        }
+    }).addTo(map);
+
+    var city = L.polygon(
+      
+      
+    ).addTo(map);
+
+  </script>
+{% endblock %}
