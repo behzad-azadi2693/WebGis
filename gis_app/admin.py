@@ -1,7 +1,6 @@
 from django.contrib.gis import admin
-from .models import Marker, Profile
+from .models import Marker, Profile, MarkerImage
 from django.contrib.auth import get_user_model
-
 
 User = get_user_model()
 # Register your models here.
@@ -18,3 +17,8 @@ class MakerAdmin(admin.OSMGeoAdmin):
 
     def username(self, obj):
         return obj.user.username
+
+
+@admin.register(MarkerImage)
+class MakerImageAdmin(admin.OSMGeoAdmin):
+    list_display = ("msrker", "id")

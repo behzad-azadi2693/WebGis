@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
+from .models import Profile
+from django.contrib.gis import forms as gform
 
 User = get_user_model()
 
@@ -60,3 +62,5 @@ class SignUpForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['username', 'password', 'first_name', 'last_name']
+
+

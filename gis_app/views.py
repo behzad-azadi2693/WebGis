@@ -1,18 +1,23 @@
 from django.shortcuts import render
-from django.views.generic import TemplateView, CreateView, DetailView, ListView
-from .models import Marker, Profile
+from django.views.generic import TemplateView, CreateView, DetailView, ListView, CreateView
+from .models import Marker, Profile, MarkerImage
 from django.contrib.auth import get_user_model
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import SignInForm, SignUpForm
 from django.contrib.gis.geos import GEOSGeometry
+import folium, geocoder
+from django.contrib.gis.geos import Polygon
+from .serializers import ImageListSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
 # Create your views here.
 User = get_user_model()
 
 
-class MakerMapView(LoginRequiredMixin,TemplateView):
+class MarkerMapView(LoginRequiredMixin,TemplateView):
     template_name = "marker.html"
 
     def get_context_data(self, *args, **kwargs):
@@ -52,28 +57,27 @@ class LogOutView(LoginRequiredMixin,LogoutView):
         return reverse('gis_app:signin')
 
 
-class ProfileView(TemplateView):
+class ProfileView(LoginRequiredMixin,TemplateView):
     template_name = 'profile.html'
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        profile = Profile.objects.get(user = self.request.user)
+        profile = Profile.objects.filter(user = self.request.user).first()
             
-        context["information"] = {
-            "title":profile.title,
-            "home":list(reversed(profile.home)),
-            "worker":list(reversed(profile.worker)),
-            "line":[list(profile.home), list(profile.worker)],
-            "length": profile.home.distance(profile.worker) * 100,
-            "city":profile.city_point_list,
-            "description":profile.description,
-            "username":profile.user.username,
-
-        }
+        if profile is not None:
+            context["information"] = {
+                "title":profile.title,
+                "home":list(reversed(profile.home)),
+                "worker":list(reversed(profile.worker)),
+                "line":[list(profile.home), list(profile.worker)],
+                "length": profile.home.distance(profile.worker) * 100,
+                "city":profile.city_point_list,
+                "description":profile.description,
+                "username":profile.user.username,
+            }
         
-        for point in profile.city:
-            print(point)
+
 
         return context
 
@@ -103,3 +107,50 @@ class UserView(TemplateView):
         }
 
         return context
+
+
+class Where(TemplateView):
+    template_name = 'where.html'
+
+    def get_context_data(self, *args, **kwargs):
+        context = super().get_context_data(**kwargs)
+        ip = self.request.META.get('REMOTE_ADDR')
+        addr = self.request.GET.get('name', 'tehran')
+        location = geocoder.osm(addr)        
+        bbox = location.geojson['features'][0]['properties']['bbox']
+        geoms = Polygon.from_bbox(bbox)
+        
+        map = folium.Map([19, -12], zoom_start=2)
+        markers = Marker.objects.filter(location__within=geoms)
+
+        for marker in markers:
+            folium.Marker(
+            list(reversed(marker.location)), 
+            popup=f'<a href="https://google.com">Images</a>',
+            tooltip=f'{list(reversed(marker.location))}-{marker.name}', 
+            ).add_to(map)
+        
+        folium.Marker(
+            [location.lat, location.lng], 
+            tooltip=f'{location.wkt}-{location.country}-{location.city}', 
+            popup=f'<a href="https://en.wikipedia.org/w/index.php?search={addr}&title=Special%3ASearch&fulltext=1&ns0=1">{addr}</a>',
+            icon=folium.Icon(color='red')
+        ).add_to(map)
+
+        context['map'] = map._repr_html_()
+
+
+        return context
+
+
+class ListImageView(APIView):
+
+    def get(self, *args, **kwargs):
+        try:
+            marker = Marker.objects.get(id = kwargs['pk'])
+            images = MarkerImage.objects.filter(marker = marker)
+            srz = ImageListSerializer(images)
+            return Response(srz, status=200)
+
+        except:
+            return Response({'msg':'marker is not found'}, status=400)
